@@ -256,7 +256,6 @@ const styleFromNodeAttributes = (
   const textDecoration = htmlElement.style.textDecoration;
   const color = htmlElement.style.color;
   const bgcolor = htmlElement.style['background-color'];
-
   return style.withMutations(style => {
     if (boldValues.indexOf(fontWeight) >= 0) {
       style.add('BOLD');
@@ -316,6 +315,18 @@ type ContentBlockConfig = {
   childConfigs: Array<ContentBlockConfig>,
   ...
 };
+
+let PASTE_CLASS_MAPPING = {
+  'rdw-right-aligned-block': {key: 'text-align', value: 'right'},
+  'rdw-center-aligned-block': {key: 'text-align', value: 'center'},
+};
+
+for (let i = 1; i <= 12; i++) {
+  PASTE_CLASS_MAPPING[`rdw-textIndent-block-${i}`] = {
+    key: 'text-indent',
+    value: i,
+  };
+}
 
 /**
  * ContentBlocksBuilder builds a list of ContentBlocks and an Entity Map
@@ -480,12 +491,12 @@ class ContentBlocksBuilder {
   _toBlockConfigs(
     nodes: Array<Node>,
     style: DraftInlineStyle,
+    data: Map<any, any>,
   ): Array<ContentBlockConfig> {
     const blockConfigs = [];
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       const nodeName = node.nodeName.toLowerCase();
-
       if (nodeName === 'body' || isListNode(nodeName)) {
         // body, ol and ul are 'block' type nodes so create a block config
         // with the text accumulated so far (if any)
@@ -505,7 +516,11 @@ class ContentBlocksBuilder {
           }
         }
         blockConfigs.push(
-          ...this._toBlockConfigs(Array.from(node.childNodes), style),
+          ...this._toBlockConfigs(
+            Array.from(node.childNodes),
+            style,
+            new Map(),
+          ),
         );
         this.currentDepth = wasCurrentDepth;
         this.wrapper = wasWrapper;
@@ -523,6 +538,8 @@ class ContentBlocksBuilder {
       if (blockType !== undefined) {
         // 'block' type node means we need to create a block config
         // with the text accumulated so far (if any)
+        // console.log('blockType', node.outerHTML, data.length)
+        let newData = new Map(data || {});
         this._trimCurrentText();
         if (this.currentText !== '') {
           blockConfigs.push(this._makeBlockConfig());
@@ -549,10 +566,21 @@ class ContentBlocksBuilder {
           this.currentDepth = getListItemDepth(htmlElement, this.currentDepth);
         }
 
+        if (node.classList.length > 0) {
+          Object.keys(PASTE_CLASS_MAPPING).forEach(k => {
+            if (node.classList.contains(k)) {
+              const mappingData = PASTE_CLASS_MAPPING[k];
+              newData = newData.set(mappingData.key, mappingData.value);
+            }
+          });
+        }
+
         const key = generateRandomKey();
+
         const childConfigs = this._toBlockConfigs(
           Array.from(node.childNodes),
           style,
+          newData,
         );
         this._trimCurrentText();
         blockConfigs.push(
@@ -560,6 +588,7 @@ class ContentBlocksBuilder {
             key,
             childConfigs,
             type: blockType,
+            data: newData,
           }),
         );
 
