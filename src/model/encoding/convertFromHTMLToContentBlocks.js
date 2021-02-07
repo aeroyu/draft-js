@@ -535,6 +535,14 @@ class ContentBlocksBuilder {
       //   continue;
       // }
 
+      // 代码块把工具栏/占坑符过滤掉
+      if (
+        node.classList?.contains('brick-code-block-toolbar') ||
+        node.classList?.contains('not-display-enter')
+      ) {
+        continue;
+      }
+
       if (blockType !== undefined) {
         // 'block' type node means we need to create a block config
         // with the text accumulated so far (if any)
@@ -1119,7 +1127,7 @@ class ContentBlocksBuilder {
 const convertFromHTMLToContentBlocks = (
   html: string,
   DOMBuilder: Function = getSafeBodyFromHTML,
-  blockRenderMap?: DraftBlockRenderMap = DefaultDraftBlockRenderMap,
+  blockRenderMap: DraftBlockRenderMap = DefaultDraftBlockRenderMap,
 ): ?{
   contentBlocks: ?Array<BlockNodeRecord>,
   entityMap: EntityMap,

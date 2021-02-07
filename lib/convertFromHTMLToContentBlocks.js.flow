@@ -324,6 +324,23 @@ type ContentBlockConfig = {
   childConfigs: Array<ContentBlockConfig>,
   ...
 };
+let PASTE_CLASS_MAPPING = {
+  'rdw-right-aligned-block': {
+    key: 'text-align',
+    value: 'right'
+  },
+  'rdw-center-aligned-block': {
+    key: 'text-align',
+    value: 'center'
+  }
+};
+
+for (let i = 1; i <= 12; i++) {
+  PASTE_CLASS_MAPPING[`rdw-textIndent-block-${i}`] = {
+    key: 'text-indent',
+    value: i
+  };
+}
 /**
  * ContentBlocksBuilder builds a list of ContentBlocks and an Entity Map
  * out of one (or several) HTMLElement(s).
@@ -340,6 +357,7 @@ type ContentBlockConfig = {
  *       .getContentBlocks();
  *
  */
+
 
 class ContentBlocksBuilder {
   // Most of the method in the class depend on the state of the content builder
@@ -483,11 +501,14 @@ class ContentBlocksBuilder {
    */
 
 
-  _toBlockConfigs(nodes: Array<Node>, style: DraftInlineStyle): Array<ContentBlockConfig> {
+  _toBlockConfigs(nodes: Array<Node>, style: DraftInlineStyle, data: Map<any, any>): Array<ContentBlockConfig> {
     const blockConfigs = [];
 
     for (let i = 0; i < nodes.length; i++) {
+      var _node$classList, _node$classList2;
+
       const node = nodes[i];
+      console.log('node', node);
       const nodeName = node.nodeName.toLowerCase();
 
       if (nodeName === 'body' || isListNode(nodeName)) {
@@ -512,7 +533,7 @@ class ContentBlocksBuilder {
           }
         }
 
-        blockConfigs.push(...this._toBlockConfigs(Array.from(node.childNodes), style));
+        blockConfigs.push(...this._toBlockConfigs(Array.from(node.childNodes), style, new Map()));
         this.currentDepth = wasCurrentDepth;
         this.wrapper = wasWrapper;
         continue;
@@ -523,10 +544,18 @@ class ContentBlocksBuilder {
       // if (blockType === 'atomic') {
       //   continue;
       // }
+      // 代码块把工具栏/占坑符过滤掉
+
+      if (((_node$classList = node.classList) === null || _node$classList === void 0 ? void 0 : _node$classList.contains('brick-code-block-toolbar')) || ((_node$classList2 = node.classList) === null || _node$classList2 === void 0 ? void 0 : _node$classList2.contains('not-display-enter'))) {
+        continue;
+      }
 
       if (blockType !== undefined) {
         // 'block' type node means we need to create a block config
         // with the text accumulated so far (if any)
+        // console.log('blockType', node.outerHTML, data.length)
+        let newData = new Map(data || {});
+
         this._trimCurrentText();
 
         if (this.currentText !== '') {
@@ -546,16 +575,26 @@ class ContentBlocksBuilder {
           this.currentDepth = getListItemDepth(htmlElement, this.currentDepth);
         }
 
+        if (node.classList.length > 0) {
+          Object.keys(PASTE_CLASS_MAPPING).forEach(k => {
+            if (node.classList.contains(k)) {
+              const mappingData = PASTE_CLASS_MAPPING[k];
+              newData = newData.set(mappingData.key, mappingData.value);
+            }
+          });
+        }
+
         const key = generateRandomKey();
 
-        const childConfigs = this._toBlockConfigs(Array.from(node.childNodes), style);
+        const childConfigs = this._toBlockConfigs(Array.from(node.childNodes), style, newData);
 
         this._trimCurrentText();
 
         blockConfigs.push(this._makeBlockConfig({
           key,
           childConfigs,
-          type: blockType
+          type: blockType,
+          data: newData
         }));
         this.currentDepth = wasCurrentDepth;
         this.wrapper = wasWrapper;
@@ -1023,7 +1062,7 @@ class ContentBlocksBuilder {
  */
 
 
-const convertFromHTMLToContentBlocks = (html: string, DOMBuilder: Function = getSafeBodyFromHTML, blockRenderMap?: DraftBlockRenderMap = DefaultDraftBlockRenderMap): ?{
+const convertFromHTMLToContentBlocks = (html: string, DOMBuilder: Function = getSafeBodyFromHTML, blockRenderMap: DraftBlockRenderMap = DefaultDraftBlockRenderMap): ?{
   contentBlocks: ?Array<BlockNodeRecord>,
   entityMap: EntityMap,
   ...
