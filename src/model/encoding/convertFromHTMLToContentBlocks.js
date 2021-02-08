@@ -496,6 +496,7 @@ class ContentBlocksBuilder {
     const blockConfigs = [];
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
+      console.log('node', node);
       const nodeName = node.nodeName.toLowerCase();
       if (nodeName === 'body' || isListNode(nodeName)) {
         // body, ol and ul are 'block' type nodes so create a block config
@@ -612,6 +613,11 @@ class ContentBlocksBuilder {
 
       if (nodeName === 'br') {
         this._addBreakNode(node, style);
+        continue;
+      }
+
+      if (nodeName === 'hr') {
+        this._addHrNode(node, style);
         continue;
       }
 
@@ -1010,6 +1016,18 @@ class ContentBlocksBuilder {
     blockConfigs.push(
       ...this._toBlockConfigs(Array.from(node.childNodes), style),
     );
+    this.currentEntity = null;
+  }
+
+  _addHrNode(node: Node, style: DraftInlineStyle) {
+    this.contentState = this.contentState.createEntity(
+      'divider',
+      'IMMUTABLE',
+      {},
+    );
+    this.currentEntity = this.contentState.getLastCreatedEntityKey();
+
+    this._appendText('-', style);
     this.currentEntity = null;
   }
 
