@@ -521,7 +521,10 @@ class ContentBlocksBuilder {
       // }
 
       // 代码块把工具栏/占坑符过滤掉
-      if (node.classList?.contains('brick-code-block-toolbar') || node.classList?.contains('not-display-enter')) {
+      if (
+        node.classList?.contains('brick-code-block-toolbar') ||
+        node.classList?.contains('not-display-enter')
+      ) {
         continue;
       }
 
@@ -738,9 +741,9 @@ class ContentBlocksBuilder {
     this.currentEntity = null;
   }
 
-  /** 
+  /**
    Add file Block
-  */
+   */
 
   _addFileNode(node, style) {
     if (!isHTMLFileElement(node)) {
@@ -786,6 +789,7 @@ class ContentBlocksBuilder {
         .substr(4);
       return str;
     }
+
     const trList = Array.prototype.slice
       .call(tableRoot.querySelectorAll('tr'), 0)
       .map(trRoot =>
@@ -941,6 +945,7 @@ class ContentBlocksBuilder {
 
     this.currentEntity = null;
   }
+
   /**
    * Add the content of an HTML 'a' node to the internal state. Child nodes
    * (if any) are converted to Block Configs and appended to the provided

@@ -40,6 +40,7 @@ type ContentStateRecordType = {
   blockMap: ?BlockMap,
   selectionBefore: ?SelectionState,
   selectionAfter: ?SelectionState,
+  op: ?any,
   ...
 };
 
@@ -48,6 +49,7 @@ const defaultRecord: ContentStateRecordType = {
   blockMap: null,
   selectionBefore: null,
   selectionAfter: null,
+  op: null,
 };
 
 // Immutable 3 typedefs are not good, so ContentState ends up
@@ -76,6 +78,10 @@ const ContentBlockNodeRecord = gkx('draft_tree_data_support')
   : ContentBlock;
 
 class ContentState extends ContentStateRecord {
+  getOp(): ?any {
+    return this.get('op');
+  }
+
   getEntityMap(): EntityMap {
     // TODO: update this when we fully remove DraftEntity
     return DraftEntity;

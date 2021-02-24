@@ -14,7 +14,7 @@
 const Immutable = require('immutable');
 const insertIntoList = require('insertIntoList');
 const invariant = require('invariant');
-
+const encodeInlineStyleRanges = require('encodeInlineStyleRanges');
 const {Repeat} = Immutable;
 
 import type CharacterMetadata from 'CharacterMetadata';
@@ -46,6 +46,14 @@ function insertTextIntoContentState(
   const offset = selectionState.getStartOffset();
   const block = blockMap.get(key);
   const blockText = block.getText();
+  console.log(
+    'insertTextIntoContentState',
+    text,
+    key,
+    offset,
+    blockMap.keySeq().findIndex(k => k === key),
+    characterMetadata.getStyle(),
+  );
 
   const newBlock = block.merge({
     text:
@@ -67,7 +75,99 @@ function insertTextIntoContentState(
       anchorOffset: newOffset,
       focusOffset: newOffset,
     }),
+    op: getOp(true, blockMap, block, characterMetadata, text, key, offset, len),
   });
 }
 
 module.exports = insertTextIntoContentState;
+
+function appendStyleAfterOffset(
+  characterMetadata,
+  ops,
+  blockIndex,
+  offset,
+  len,
+) {
+  if (!characterMetadata.getStyle().isEmpty()) {
+    const styleList = characterMetadata.getStyle().toList();
+    for (let i = 0; i < styleList.size; i++) {
+      ops.push({
+        p: ['blocks', blockIndex, 'inlineStyleRanges', i],
+        li: {offset: offset, length: len, style: styleList.get(i)},
+      });
+    }
+  }
+}
+
+function getOp(
+  enable,
+  blockMap,
+  block,
+  characterMetadata,
+  text,
+  key,
+  offset,
+  len,
+) {
+  if (!enable) return null;
+  const blockIndex = blockMap.keySeq().findIndex(k => k === key);
+  const ops = [
+    {
+      p: ['blocks', blockIndex, 'text', offset],
+      si: text,
+    },
+  ];
+  const blockCharacterList = block.getCharacterList();
+  if (offset === blockCharacterList.count()) {
+    // 句末插入
+    if (!characterMetadata.isEmpty()) {
+      appendStyleAfterOffset(characterMetadata, ops, blockIndex, offset, len);
+      if (characterMetadata.getEntity()) {
+      }
+    }
+  } else {
+    const styleRanges = encodeInlineStyleRanges(block);
+    let styleRangesIndex = 0;
+    styleRanges.forEach(styleRange => {
+      if (styleRange.offset >= offset) {
+        ops.push({
+          p: [
+            'blocks',
+            blockIndex,
+            'inlineStyleRanges',
+            styleRangesIndex,
+            'offset',
+          ],
+          od: styleRange.offset,
+          oi: styleRange.offset + len,
+        });
+      } else {
+        const headLength = offset - styleRange.offset;
+        ops.push(
+          {
+            p: [
+              'blocks',
+              blockIndex,
+              'inlineStyleRanges',
+              styleRangesIndex,
+              'length',
+            ],
+            od: styleRange.length,
+            oi: headLength,
+          },
+          {
+            p: ['blocks', blockIndex, 'inlineStyleRanges', styleRangesIndex],
+            li: {
+              offset: offset + len,
+              length: styleRange.length - headLength,
+              style: styleRange.style,
+            },
+          },
+        );
+        appendStyleAfterOffset(characterMetadata, ops, blockIndex, offset, len);
+      }
+      styleRangesIndex++;
+    });
+  }
+  return ops;
+}

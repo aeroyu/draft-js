@@ -59,7 +59,7 @@ export default class TeXEditorExample extends React.Component {
 
         this._focus = () => this.refs.editor.focus();
         this._onChange = (editorState) => {
-            console.log(convertToRaw(editorState.getCurrentContent()),editorState.getLastChangeType())
+            console.log(convertToRaw(editorState.getCurrentContent()),editorState.getLastChangeType(),editorState.getCurrentContent().getOp() && editorState.getCurrentContent().getOp().toJS())
             this.setState({editorState})
         };
 
